@@ -1,0 +1,1 @@
+wrk -t4 -c200 -d60s --latency http://localhost:8081/ > report/redirect_test.rep
