@@ -3,11 +3,11 @@ package me.geek.loehash.oassa.gateway;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.DefaultEventLoop;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.*;
+import me.geek.loehash.oassa.common.entity.protocol.RouteLookupResponse;
 import me.geek.loehash.oassa.common.protocol.DirectorClient;
 import me.geek.loehash.oassa.gateway.cache.PathMountCache;
 import me.geek.loehash.oassa.gateway.init.HttpServerInitializer;
@@ -48,7 +48,8 @@ public class OassaGatewayMain {
 
 
         AllObjects.directorClient = new DirectorClient(directorAddress, directorIPort, true);
-        AllObjects.pmc = new PathMountCache<>();
+        // 使用 director 返回的 ttlSeconds 作为缓存过期时间，未提供时回退到默认 30 分钟
+        AllObjects.pmc = new PathMountCache<>(RouteLookupResponse::ttlSeconds);
 
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();

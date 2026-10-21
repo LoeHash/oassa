@@ -9,6 +9,7 @@ import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpUtil;
@@ -161,7 +162,7 @@ public class DirectorServerHandler
             if (HttpUtil.isKeepAlive(req)) {
                 response.headers().set(
                         HttpHeaderNames.CONNECTION,
-                        HttpHeaderNames.CONNECTION
+                        HttpHeaderValues.KEEP_ALIVE
                 );
                 ctx.writeAndFlush(response);
             } else {

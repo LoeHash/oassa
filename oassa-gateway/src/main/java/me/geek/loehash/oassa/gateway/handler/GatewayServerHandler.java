@@ -1,7 +1,5 @@
 package me.geek.loehash.oassa.gateway.handler;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -12,8 +10,6 @@ import me.geek.loehash.oassa.common.utils.HttpResponseFactory;
 import me.geek.loehash.oassa.gateway.cache.PathMountCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.TimeUnit;
 
 public class GatewayServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
@@ -51,47 +47,42 @@ public class GatewayServerHandler extends SimpleChannelInboundHandler<FullHttpRe
             return;
         }
 
-        RouteLookupResponse resolve = pmc.resolve(path);
-//        pmc.printCache();
-        if (resolve != null){
-            redirect(ctx, req, resolve);
-            return;
-        }
+        // resolveAsync 自带 single-flight：缓存未命中时，同一 path 只有一个请求打到 director，
+        // 其余并发请求复用同一个 future，避免缓存过期引发的惊群。
+        pmc.resolveAsync(path, directorClient::lookup, RouteLookupResponse::mountPath)
+                .whenComplete((route, error) -> {
 
-        directorClient.lookup(path).whenComplete((route, error) -> {
+                    if (!ctx.channel().isActive()) {
+                        return;
+                    }
 
-            if (!ctx.channel().isActive()) {
-                return;
-            }
+                    ctx.executor().execute(() -> {
 
-            ctx.executor().execute(() -> {
+                        if (!ctx.channel().isActive()) {
+                            return;
+                        }
 
-                if (!ctx.channel().isActive()) {
-                    return;
-                }
+                        if (error != null) {
+                            log.error("Director lookup failed, path={}", path, error);
 
-                if (error != null) {
-                    log.error("Director lookup failed, path={}", path, error);
+                            writeResponse(ctx, req,
+                                    HttpResponseFactory.error(
+                                            HttpResponseStatus.BAD_GATEWAY,
+                                            "Director lookup failed"));
+                            return;
+                        }
 
-                    writeResponse(ctx, req,
-                            HttpResponseFactory.error(
-                                    HttpResponseStatus.BAD_GATEWAY,
-                                    "Director lookup failed"));
-                    return;
-                }
+                        if (route == null) {
+                            writeResponse(ctx, req,
+                                    HttpResponseFactory.error(
+                                            HttpResponseStatus.NOT_FOUND,
+                                            "No matching route"));
+                            return;
+                        }
 
-                if (route == null) {
-                    writeResponse(ctx, req,
-                            HttpResponseFactory.error(
-                                    HttpResponseStatus.NOT_FOUND,
-                                    "No matching route"));
-                    return;
-                }
-
-                pmc.mount(route.mountPath(), route);
-                redirect(ctx, req, route);
-            });
-        });
+                        redirect(ctx, req, route);
+                    });
+                });
     }
 
 

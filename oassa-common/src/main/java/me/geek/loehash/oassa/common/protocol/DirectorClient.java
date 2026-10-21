@@ -2,16 +2,12 @@ package me.geek.loehash.oassa.common.protocol;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.handler.codec.http.*;
 import lombok.Getter;
 import me.geek.loehash.oassa.common.entity.protocol.DirectorResponse;
 import me.geek.loehash.oassa.common.entity.protocol.RouteLookupResponse;
 import okhttp3.*;
 
 import java.io.IOException;
-import java.net.http.HttpRequest;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -20,12 +16,8 @@ public class DirectorClient {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
-
     private final String directorBaseUrl;
     private final OkHttpClient client;
-
-    private final NioEventLoopGroup eventLoopGroup = new NioEventLoopGroup(2);
 
     @Getter
     private final String directorHost;
@@ -79,9 +71,18 @@ public class DirectorClient {
             @Override
             public void onResponse(Call call, Response response) {
                 try (ResponseBody body = response.body()) {
+                    int code = response.code();
+
+                    // 路由不存在：director 返回 404，按 null 处理而不是异常，
+                    // 这样网关能正确返回 404 给客户端，而不是误报 502。
+                    if (code == 404) {
+                        future.complete(null);
+                        return;
+                    }
+
                     if (!response.isSuccessful()) {
                         future.completeExceptionally(new RuntimeException(
-                                "Director returned HTTP " + response.code()));
+                                "Director returned HTTP " + code));
                         return;
                     }
 
