@@ -13,6 +13,7 @@
         <module>oassa-director</module>
         <module>oassa-streamer</module>
         <module>oassa-console</module>
+        <module>oassa-common</module>
     </modules>
 
     <properties>

@@ -1,4 +1,4 @@
-package me.geek.loehash.oassa.gateway.utils;
+package me.geek.loehash.oassa.common.utils;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
