@@ -1,5 +1,7 @@
 package me.geek.loehash.oassa.gateway.handler;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -7,18 +9,25 @@ import io.netty.handler.codec.http.*;
 import me.geek.loehash.oassa.common.entity.protocol.RouteLookupResponse;
 import me.geek.loehash.oassa.common.protocol.DirectorClient;
 import me.geek.loehash.oassa.common.utils.HttpResponseFactory;
+import me.geek.loehash.oassa.gateway.cache.PathMountCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
+import java.util.concurrent.TimeUnit;
+
+public class GatewayServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
+
+    private final PathMountCache<RouteLookupResponse> pmc;
 
     private static final Logger log =
-            LoggerFactory.getLogger(HttpServerHandler.class);
+            LoggerFactory.getLogger(GatewayServerHandler.class);
 
     private final DirectorClient directorClient;
 
-    public HttpServerHandler(DirectorClient directorClient) {
+    public GatewayServerHandler(DirectorClient directorClient,
+                                PathMountCache<RouteLookupResponse> pmc) {
         this.directorClient = directorClient;
+        this.pmc = pmc;
     }
 
     @Override
@@ -39,6 +48,13 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpReque
                     HttpResponseFactory.error(
                             HttpResponseStatus.BAD_REQUEST,
                             "Invalid object path"));
+            return;
+        }
+
+        RouteLookupResponse resolve = pmc.resolve(path);
+//        pmc.printCache();
+        if (resolve != null){
+            redirect(ctx, req, resolve);
             return;
         }
 
@@ -72,10 +88,12 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<FullHttpReque
                     return;
                 }
 
+                pmc.mount(route.mountPath(), route);
                 redirect(ctx, req, route);
             });
         });
     }
+
 
     /**
      * 302 临时重定向到 Streamer。

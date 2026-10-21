@@ -9,6 +9,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.*;
 import me.geek.loehash.oassa.common.protocol.DirectorClient;
+import me.geek.loehash.oassa.gateway.cache.PathMountCache;
 import me.geek.loehash.oassa.gateway.init.HttpServerInitializer;
 import me.geek.loehash.oassa.gateway.obj.AllObjects;
 
@@ -46,7 +47,8 @@ public class OassaGatewayMain {
         );
 
 
-        AllObjects.directorClient = new DirectorClient(directorAddress, directorIPort);
+        AllObjects.directorClient = new DirectorClient(directorAddress, directorIPort, true);
+        AllObjects.pmc = new PathMountCache<>();
 
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();

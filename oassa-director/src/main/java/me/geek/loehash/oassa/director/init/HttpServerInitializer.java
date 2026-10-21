@@ -6,7 +6,7 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.util.concurrent.EventExecutorGroup;
 import lombok.Getter;
-import me.geek.loehash.oassa.director.handler.HttpServerHandler;
+import me.geek.loehash.oassa.director.handler.DirectorServerHandler;
 import me.geek.loehash.oassa.common.utils.ByteSizeUtil;
 import me.geek.loehash.oassa.director.obj.AllObjects;
 
@@ -29,7 +29,7 @@ public class HttpServerInitializer extends ChannelInitializer<SocketChannel> {
                 // 2. 聚合：分块 → FullHttpRequest（最大 64KB）
                 .addLast(new HttpObjectAggregator(ByteSizeUtil.toBytes(64, ByteSizeUtil.KB)))
                 // 3. 业务处理
-                .addLast(businessGroup, new HttpServerHandler(AllObjects.routeService));
+                .addLast(businessGroup, new DirectorServerHandler(AllObjects.routeService));
     }
 
 }

@@ -24,11 +24,11 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 
-public class HttpServerHandler
+public class DirectorServerHandler
         extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     private static final Logger log =
-            LoggerFactory.getLogger(HttpServerHandler.class);
+            LoggerFactory.getLogger(DirectorServerHandler.class);
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -37,7 +37,7 @@ public class HttpServerHandler
 
     private final RouteService routeService;
 
-    public HttpServerHandler(RouteService routeService) {
+    public DirectorServerHandler(RouteService routeService) {
         this.routeService = routeService;
     }
 
@@ -97,6 +97,9 @@ public class HttpServerHandler
                     ));
             return;
         }
+
+        // try the cache first.
+        //,..
 
         try {
             RouteLookupResponse route = routeService.lookup(path);
