@@ -1,13 +1,18 @@
 package me.geek.loehash.oassa.common.protocol;
 
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
+import me.geek.loehash.oassa.common.entity.protocol.BatchLookupRequest;
 import me.geek.loehash.oassa.common.entity.protocol.DirectorResponse;
 import me.geek.loehash.oassa.common.entity.protocol.RouteLookupResponse;
 import okhttp3.*;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -108,6 +113,73 @@ public class DirectorClient {
                 }
             }
         });
+
+        return future;
+    }
+
+    /**
+     * 批量查询路由，异步返回。
+     * <p>
+     * POST {@code /internal/v1/routes/batch-lookup}，请求体为 {@code {"paths":[...]}}。
+     * 返回 map 中只包含命中的路径，未命中的路径不在结果中。
+     *
+     * @param paths 待查询的路径列表
+     * @return path -> 路由结果 的 map（未命中的 path 不在 map 中）
+     */
+    public CompletableFuture<Map<String, RouteLookupResponse>> batchLookup(List<String> paths) {
+        CompletableFuture<Map<String, RouteLookupResponse>> future = new CompletableFuture<>();
+
+        try {
+            BatchLookupRequest requestBody = new BatchLookupRequest(paths);
+            String json = MAPPER.writeValueAsString(requestBody);
+
+            Request request = new Request.Builder()
+                    .url(directorBaseUrl + "/internal/v1/routes/batch-lookup")
+                    .header("Accept", "application/json")
+                    .header("Content-Type", "application/json")
+                    .post(RequestBody.create(json, MediaType.get("application/json")))
+                    .build();
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    future.completeExceptionally(e);
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) {
+                    try (ResponseBody body = response.body()) {
+                        int code = response.code();
+
+                        if (!response.isSuccessful()) {
+                            future.completeExceptionally(new RuntimeException(
+                                    "Director batch returned HTTP " + code));
+                            return;
+                        }
+
+                        byte[] bytes = body != null ? body.bytes() : new byte[0];
+
+                        DirectorResponse<?> envelope = MAPPER.readValue(bytes, DirectorResponse.class);
+
+                        if (envelope.code() != 0) {
+                            future.completeExceptionally(new RuntimeException(
+                                    "Director error code: " + envelope.code()));
+                            return;
+                        }
+
+                        Map<String, RouteLookupResponse> result = MAPPER.convertValue(
+                                envelope.data(),
+                                new TypeReference<Map<String, RouteLookupResponse>>() {});
+
+                        future.complete(result != null ? result : new HashMap<>());
+                    } catch (Exception e) {
+                        future.completeExceptionally(e);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            future.completeExceptionally(e);
+        }
 
         return future;
     }

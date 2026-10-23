@@ -49,7 +49,7 @@ public class GatewayServerHandler extends SimpleChannelInboundHandler<FullHttpRe
 
         // resolveAsync 自带 single-flight：缓存未命中时，同一 path 只有一个请求打到 director，
         // 其余并发请求复用同一个 future，避免缓存过期引发的惊群。
-        pmc.resolveAsync(path, directorClient::lookup, RouteLookupResponse::mountPath)
+        pmc.resolveAsync(path, directorClient::lookup)
                 .whenComplete((route, error) -> {
 
                     if (!ctx.channel().isActive()) {

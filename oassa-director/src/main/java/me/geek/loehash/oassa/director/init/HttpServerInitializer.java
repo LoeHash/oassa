@@ -28,8 +28,8 @@ public class HttpServerInitializer extends ChannelInitializer<SocketChannel> {
                 .addLast(new HttpServerCodec())
                 // 2. 聚合：分块 → FullHttpRequest（最大 64KB）
                 .addLast(new HttpObjectAggregator(ByteSizeUtil.toBytes(64, ByteSizeUtil.KB)))
-                // 3. 业务处理
-                .addLast(businessGroup, new DirectorServerHandler(AllObjects.routeService));
+                // 3. 业务处理（交给 ControllerDispatcher 分发到各 Controller）
+                .addLast(businessGroup, new DirectorServerHandler(AllObjects.controllerDispatcher));
     }
 
 }
